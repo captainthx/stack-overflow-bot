@@ -99,7 +99,29 @@ def get_top_questions(message):
     except requests.exceptions.RequestException as e:
         bot.send_message(message.chat.id, f"เกิดข้อผิดพลาดในการเชื่อมต่อ: {str(e)}")
             
-                            
+@bot.message_handler(commands=['history'])
+def show_history(message):
+    if not search_history:
+        bot.send_message(message.chat.id,"📜 ไม่มีประวัติการค้นหา")
+        return
+    keyboard = types.InlineKeyboardMarkup()     
+    for query in search_history:
+       keyboard.add(types.InlineKeyboardButton(f"🔎 {query}", callback_data=f"search_{query}"))
+    bot.send_message(message.chat.id,"*ประวัติการค้นหาล่าสุด:*", reply_markup=keyboard)                            
+
+
+# # จัดการ Callback เมื่อกดปุ่มประวัติ
+@bot.callback_query_handler(func=lambda call: call.data.startswith("search_"))
+def search_from_history(call):
+    query = call.data.replace("search_", "")
+    translated_query = translate_to_english(query)
+    result_text, keyboard = search_stackoverflow(translated_query)
+
+    if keyboard:
+        bot.send_message(call.message.chat.id, result_text, reply_markup=keyboard)
+    else:
+        bot.send_message(call.message.chat.id, result_text)
+
 
 @bot.message_handler(func=lambda message:True)
 def search_question(message):
@@ -116,7 +138,9 @@ def search_question(message):
         bot.send_message(message.chat.id,result)
 
 
-        
+
+
+
 if __name__ == "__main__":
     print("Bot is running....")
     bot.polling()
